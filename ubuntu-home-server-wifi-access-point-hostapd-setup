@@ -1,0 +1,125 @@
+#!/bin/bash
+
+# simple script to install hostapd and configure from scratch to act as a wifi access point on boot
+# Intended for use on a home server, eg a NUC, with a wifi device to replace the need for an additional
+# wifi bridge.  Assumes Ubuntu 14.04.1 with single ethernet configured as dhcp.
+# Probably fine with a recent deb system also.
+# The system it sets up is a simple bridge between the wifi card and the ethernet device.
+# it is assumed that if someone has wifi credentials they are allowed on the lan / server
+
+# Defaults to WPA2 TKIP only, nl80211 driver, GB (UK wifi region)
+
+# N.B. not all wifi devices / drivers support AP (Access Point) mode.
+# would be nice to expand this script to test for this
+# sudo apt-get install iw
+# iw list and check for AP under "Supported interface modes"
+
+echo "WARNING this script will alter your network configuration, understand what it does first"
+echo
+read -e -p "Do you wish to install and configure hostapd and from scratch (y/n): " -i "y" SETUP_HOSTAPD
+echo
+
+if [ ! "$SETUP_HOSTAPD" = "y" ]; then
+  echo "OK exiting script"
+  exit -1
+fi
+
+if ! dpkg -s hostadp >/dev/null; then
+  echo "installing the hostapd package"
+  sudo apt-get install -q hostapd
+  echo
+  
+  # Get the wifi region, SSID, and passphrase
+  echo "Pleae input the following info"
+  # see https://en.wikipedia.org/wiki/ISO_3166-1 for country codes
+  read -e -p "Wifi region COUNTRY CODE eg GB or US (https://en.wikipedia.org/wiki/ISO_3166-1): " -i "GB" COUNTRY_CODE
+  read -e -p "Wifi SSID; ie the name of the wifi network to create: " -i "YTAgitWifi" SSID
+  read -e -p "Wifi passphrase; what users will have to use as the password to associate join this Wifi network: " -i "changethissecret" WIFI_PASS
+  
+  # Now to enable on boot hostapd startup by un-remarking in /etc/default/hostapd
+  echo "Enabling hostapd startup on boot in deamon mode via /etc/default/hostapd"
+  sudo sed -i's/#DAEMON_CONF=""/DAEMON_CONF="\/etc\/hostapd\/hostapd\.conf"/g' /etc/default/hostapd
+  
+  # N.B. all tees without -a cause an overwrite of the output file
+  # also note >/dev/null avoids tee from causing screen output
+  # Here we simply unzip the default hostapd config file and put it in /etc/hostapd/hostapd.conf
+  # Good resource to have as is loaded with info on a whole bunch of settings; but not all of them though.
+  zcat /usr/share/doc/hostapd/examples/hostapd.conf.gz | sudo tee -a /etc/hostapd/hostapd.conf >/dev/null
+  
+  # Assuming our wifi driver creates the default interface name of wlan0
+  # interface=wlan0 already in the default config
+  
+  # default is to accept all mac addresses, we are going with this also
+  # macaddr_acl=0 already in the default config
+  
+  # remove # from #bridge=br0
+  sudo sed -i 's/#bridge=br0/bridge=br0/g' /etc/hostapd/hostapd.conf
+  
+  # remove # and space from driver and change to nl80211
+  sudo sed -i 's/# driver=hostap/driver=nl80211/g' /etc/hostapd/hostapd.conf
+
+  # https://en.wikipedia.org/wiki/ISO_3166-1 for country codes
+  # change #country_code=US to country_code=GB
+  # N.B. could use double quotes around the lot to use the shell variable ie:-
+  # sudo sed -i "s/#country_code=US/country_code=$COUNTRY_CODE/g" /etc/hostapd/hostapd.conf
+  # but suspect the following is more robust and consistent:-
+  sudo sed -i 's/#country_code=US/country_code='"$COUNTRY_CODE"'/g' /etc/hostapd/hostapd.conf
+  
+  # change default ssid from test to our SSID
+  sudo sed -i 's/ssid=test/ssid='"$SSID"'/g' /etc/hostapd/hostapd.conf
+
+  # see http://wireless.kernel.org/en/users/Documentation/hostapd
+  # Leaving hw_mode=g default
+  # N.B. this is not where one enables 80211n as this operates on top of a or g
+  
+  # enable wpa2 by changing #wpa=1 into wpa=2 (bit1 = IEEE 802.11i/RSN (WPA2))
+  sudo sed -i 's/#wpa=1/wpa=2/g' /etc/hostapd/hostapd.conf
+  
+  # replace “#wpa_passphrase=secret passphrase” with the passphrase
+  sudo sed -i 's/#wpa_passphrase=secret passphrase/wpa_passphrase='"$WIFI_PASS"'/g' /etc/hostapd/hostapd.conf
+  
+  # replace “#wpa_key_mgmt=WPA-PSK WPA-EAP” with “wpa_key_mgmt=WPA-PSK”
+  sudo sed -i 's/#wpa_key_mgmt=WPA-PSK WPA-EAP/wpa_key_mgmt=WPA-PSK/g' /etc/hostapd/hostapd.conf
+  
+  # disable Shared Key Authentication (bit 1) used by WEP
+  # replace “auth_algs=3” with “auth_algs=1”
+  sudo sed -i 's/auth_algs=3/auth_algs=1/g' /etc/hostapd/hostapd.conf
+  
+  # replace “#wpa_pairwise=TKIP CCMP” with “wpa_pairwise=TKIP”
+  sudo sed -i 's/#wpa_pairwise=TKIP CCMP/wpa_pairwise=TKIP/g' /etc/hostapd/hostapd.conf
+  
+  # from hostapd.conf:- "Pairwise cipher for RSN/WPA2 (default: use wpa_pairwise value)"
+  # replace “#rsn_pairwise=CCMP” with “rsn_pairwise=CCMP”
+  sudo sed -i 's/#rsn_pairwise=CCMP/rsn_pairwise=CCMP/g' /etc/hostapd/hostapd.conf
+
+  # install bridge-utils
+  # should ask first but then we have to deal with half a config.
+  sudo apt-get install -q bridge-utils  
+  
+  # change eth0 configuration from dhcp to manual as br0 can then pickup the dhcp
+  # replace “iface eth0 inet dhcp” with “iface eth0 inet manual”
+  sudo sed -i 's/iface eth0 inet dhcp/iface eth0 inet manual/g' /etc/network/interfaces
+  
+  # Add an auto br0 entry and define br0 as a inet dhcp client based on at least eth0
+  # hostapd can then add wlan0 to this bridge as per its config in /etc/hostapd/hostapd.conf
+  # N.B. need a fix for the indenting here as we are exact piping the following lines and 
+  # leading spaces may upset things.
+  # Maybe put in function instead.
+sudo tee -a /etc/network/interfaces >/dev/null <<__EOF
+
+# Add br0 to auto started interfaces
+auto br0
+
+# Setup bridge
+# hostapd can then add wlan0 to this bridge as per its config in /etc/hostapd/hostapd.conf
+iface br0 inet dhcp
+bridge_ports eth0
+
+__EOF
+
+else
+  echo "hostapd package already installed, please consider removing this package first"
+  echo "as this script expects to install and configure this package itself"
+  echo "sudo apt-get purge hostapd"
+  echo "N.B. WARNING this will remove all previous configurations"
+fi
