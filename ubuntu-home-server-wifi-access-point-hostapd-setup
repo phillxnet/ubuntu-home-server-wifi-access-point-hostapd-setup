@@ -51,7 +51,7 @@ if ! dpkg -s hostadp >/dev/null; then
   
   # Now to enable on boot hostapd startup by un-remarking in /etc/default/hostapd
   echo "Enabling hostapd startup on boot in deamon mode via /etc/default/hostapd"
-  sudo sed -i's/#DAEMON_CONF=""/DAEMON_CONF="\/etc\/hostapd\/hostapd\.conf"/g' /etc/default/hostapd
+  sudo sed -i 's/#DAEMON_CONF=""/DAEMON_CONF="\/etc\/hostapd\/hostapd\.conf"/g' /etc/default/hostapd
   
   # N.B. all tees without -a cause an overwrite of the output file
   # also note >/dev/null avoids tee from causing screen output
