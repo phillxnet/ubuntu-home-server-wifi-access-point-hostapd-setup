@@ -7,7 +7,7 @@
 # The system it sets up is a simple bridge between the wifi card and the ethernet device.
 # it is assumed that if someone has wifi credentials they are allowed on the lan / server
 
-# Defaults to WPA2 TKIP only, nl80211 driver, GB (UK wifi region)
+# Defaults to WPA2 TKIP only, nl80211 driver, GB (UK wifi region), channel 1
 
 # N.B. not all wifi devices / drivers support AP (Access Point) mode.
 # would be nice to expand this script to test for this
@@ -35,6 +35,8 @@ if ! dpkg -s hostadp >/dev/null; then
   read -e -p "Wifi region COUNTRY CODE eg GB or US (https://en.wikipedia.org/wiki/ISO_3166-1): " -i "GB" COUNTRY_CODE
   read -e -p "Wifi SSID; ie the name of the wifi network to create: " -i "YTAgitWifi" SSID
   read -e -p "Wifi passphrase; what users will have to use as the password to associate join this Wifi network: " -i "changethissecret" WIFI_PASS
+  read -e -p "Wifi CHANNEL ie 1-11 (in UK / GB region g based)" -i "1" CHANNEL
+
   
   # Now to enable on boot hostapd startup by un-remarking in /etc/default/hostapd
   echo "Enabling hostapd startup on boot in deamon mode via /etc/default/hostapd"
@@ -64,6 +66,10 @@ if ! dpkg -s hostadp >/dev/null; then
   # sudo sed -i "s/#country_code=US/country_code=$COUNTRY_CODE/g" /etc/hostapd/hostapd.conf
   # but suspect the following is more robust and consistent:-
   sudo sed -i 's/#country_code=US/country_code='"$COUNTRY_CODE"'/g' /etc/hostapd/hostapd.conf
+  
+  # this would be more complex to sanity check as channels affected by region
+  # here we just set to what was requested, default file has channel=1 entry
+  sudo sed -i 's/channel=1/channel='"$CHANNEL"'/g' /etc/hostapd/hostapd.conf
   
   # change default ssid from test to our SSID
   sudo sed -i 's/ssid=test/ssid='"$SSID"'/g' /etc/hostapd/hostapd.conf
