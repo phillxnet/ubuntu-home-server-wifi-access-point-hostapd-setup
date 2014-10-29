@@ -46,7 +46,7 @@ if ! dpkg -s hostadp >/dev/null; then
   # so "ip route get 8.8.8.8 | awk '{print $5}'" gives us the 5 column and hence the internet access / LAN interface
   LAN_INTERFACE_NAME=$(ip route get 8.8.8.8 | awk '{print $5}')
   echo
-  read -e -p "Lan INTERFACE_NAME eg eth0 or em1 (change if incorrect)" -i "$LAN_INTERFACE_NAME" LAN_INTERFACE_NAME
+  read -e -p "Lan INTERFACE_NAME eg eth0 or em1 (change if incorrect or <Enter> key if correct) " -i "$LAN_INTERFACE_NAME" LAN_INTERFACE_NAME
   
   
   # Now to enable on boot hostapd startup by un-remarking in /etc/default/hostapd
