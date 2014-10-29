@@ -125,7 +125,7 @@ if ! dpkg -s hostadp >/dev/null; then
   # should ask first but then we have to deal with half a config.
   echo
   echo "Installing bridge-utils in order to create br0 on boot and bridge it to $LAN_INTERFACE_NAME"
-  echo "hostapd can then add wlan0 to this bridge in it's own good time"
+  echo "hostapd can then add wlan0 to this bridge in its own good time"
   sudo apt-get install -q bridge-utils  
   
   # change the lan configuration from dhcp to manual as br0 can then pickup the dhcp
