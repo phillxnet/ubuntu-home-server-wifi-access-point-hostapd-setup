@@ -38,6 +38,16 @@ if ! dpkg -s hostadp >/dev/null; then
   read -e -p "Wifi passphrase; what users will have to use as the password to associate join this Wifi network: " -i "changethissecret" WIFI_PASS
   read -e -p "Wifi CHANNEL ie 1-11 (in UK / GB region g based)" -i "1" CHANNEL
 
+  # Need to find the interface name as previously assumed eth0 but NUC has em1 for first motherboard interface
+  # new naming convention; also has p3p1 (for pci slot and port number)
+  # ip link show or
+  # ls /sys/class/net/ gives on my NUC "em1  lo  wlan0" and on my desktop "docker0  eth0  lo"
+  # or "ip route get 8.8.8.8" which gives "8.8.8.8 via 192.168.1.1 dev em1  src 192.168.1.124"
+  # so "ip route get 8.8.8.8 | awk '{print $5}'" gives us the 5 column and hence the internet access / LAN interface
+  LAN_INTERFACE_NAME=$(ip route get 8.8.8.8 | awk '{print $5}')
+  echo
+  read -e -p "Lan INTERFACE_NAME eg eth0 or em1 (change if incorrect)" -i "$LAN_INTERFACE_NAME" LAN_INTERFACE_NAME
+  
   
   # Now to enable on boot hostapd startup by un-remarking in /etc/default/hostapd
   echo "Enabling hostapd startup on boot in deamon mode via /etc/default/hostapd"
@@ -114,14 +124,14 @@ if ! dpkg -s hostadp >/dev/null; then
   # install bridge-utils
   # should ask first but then we have to deal with half a config.
   echo
-  echo "Installing bridge-utils in order to create br0 on boot and bridge it to eth0"
+  echo "Installing bridge-utils in order to create br0 on boot and bridge it to $LAN_INTERFACE_NAME"
   echo "hostapd can then add wlan0 to this bridge in it's own good time"
   sudo apt-get install -q bridge-utils  
   
-  # change eth0 configuration from dhcp to manual as br0 can then pickup the dhcp
-  # replace “iface eth0 inet dhcp” with “iface eth0 inet manual”
-  echo "Changing 'iface eth0 inet dhcp' to 'iface eth0 inet manual' in /etc/network/interfaces"
-  sudo sed -i 's/iface eth0 inet dhcp/iface eth0 inet manual/g' /etc/network/interfaces
+  # change the lan configuration from dhcp to manual as br0 can then pickup the dhcp
+  # replace “iface $LAN_INTERFACE_NAME inet dhcp” with “iface $LAN_INTERFACE_NAME inet manual”
+  echo "Changing 'iface $LAN_INTERFACE_NAME inet dhcp' to 'iface $LAN_INTERFACE_NAME inet manual' in /etc/network/interfaces"
+  sudo sed -i 's/iface '"$LAN_INTERFACE_NAME"' inet dhcp/iface '"$LAN_INTERFACE_NAME"' inet manual/g' /etc/network/interfaces
   
   # Add an auto br0 entry and define br0 as a inet dhcp client based on at least eth0
   # hostapd can then add wlan0 to this bridge as per its config in /etc/hostapd/hostapd.conf
@@ -137,7 +147,7 @@ auto br0
 # Setup bridge
 # hostapd can then add wlan0 to this bridge as per its config in /etc/hostapd/hostapd.conf
 iface br0 inet dhcp
-bridge_ports eth0
+bridge_ports $LAN_INTERFACE_NAME
 
 __EOF
 
