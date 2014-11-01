@@ -36,7 +36,7 @@ if ! dpkg -s hostadp >/dev/null; then
   read -e -p "Wifi region COUNTRY CODE eg GB or US (https://en.wikipedia.org/wiki/ISO_3166-1): " -i "GB" COUNTRY_CODE
   read -e -p "Wifi SSID; ie the name of the wifi network to create: " -i "YTAgitWifi" SSID
   read -e -p "Wifi passphrase; what users will have to use as the password to associate join this Wifi network: " -i "changethissecret" WIFI_PASS
-  read -e -p "Wifi CHANNEL ie 1-11 (in UK / GB region g based)" -i "1" CHANNEL
+  read -e -p "Wifi CHANNEL ie 1-11 (in UK / GB region g based) " -i "1" CHANNEL
   read -e -p "Do you wish to enable 802.11n capability (y/n): " -i "y" SETUP_80211N
 
 
@@ -177,7 +177,25 @@ __EOF
   echo "As this required network alterations a proper test it to reboot and"
   echo "confirm proper power on functionality."
   echo "If there are network issues review /etc/network/interfaces"
+  echo
+  echo "Once the network is restarted and hostapd has been started note the following"
+  echo "usefull commands:-"
+  echo "'brctl show' should have the ethernet & wifi as members"
+  echo "'watch -d iw wlan0 station dump' to see the specifications of connections"
+  echo "Ctrl+C to exit the watch 'readout'"
+  echo
+  
+  read -e -p "Do you wish to restart the network and start hostapd (y/n): " -i "y" IFDOWNUP_HOSTAPD_START
 
+  if [ "$IFDOWNUP_HOSTAPD_START" = "y" ]; then
+    # restart all interfaces except local loopback (lo)
+    echo "executing ifdown and ifup on all interfaces except lo"
+    sudo ifdown --exclude=lo -a && sudo ifup --exclude=lo -a
+    # and then start hostapd
+    echo "starting the hostapd service / deamon"
+    sudo service hostapd start
+  fi
+  
 else
   echo "hostapd package already installed, please consider removing this package first"
   echo "as this script expects to install and configure this package itself"
