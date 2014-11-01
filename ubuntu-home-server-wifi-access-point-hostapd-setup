@@ -121,6 +121,21 @@ if ! dpkg -s hostadp >/dev/null; then
   echo "Setting rsn_pairwise=CCMP in /etc/hostapd/hostapd.conf"
   sudo sed -i 's/#rsn_pairwise=CCMP/rsn_pairwise=CCMP/g' /etc/hostapd/hostapd.conf
 
+  # need to put a conditional around this later to not enable n operation
+  # if user want n then
+  echo "Settingieee80211n=1 to enable 802.11n mode"
+  sudo sed -i 's/#ieee80211n=1/ieee80211n=1/g' /etc/hostapd/hostapd.conf
+  
+  # also need to set 802.11n ht_capabilities.
+  # could set this depending on channel already selected:-
+  # ie for hw_mode=g (ie Band 1 or 2.4GHz):-
+  # if channel <=7 then HT40+
+  # else HT40-
+  # N.B. Band 1 capabilities on my 7260ac gave "Static SM Power Save" so added [SMPS-STATIC]
+  # will need to escape the square brackes as one of "$.*/[\]^"
+  echo "Setting ht_capab=[HT40+][SHORT-GI-40][DSSS_CCK-40][SMPS-STATIC]"
+  sudo sed -i 's/#ht_capab=\[HT40-\]\[SHORT-GI-20\]\[SHORT-GI-40\]/ht_capab=\[HT40+\]\[SHORT-GI-40\]\[DSSS_CCK-40\]\[SMPS-STATIC\]/g' /etc/hostapd/hostapd.conf
+  
   # install bridge-utils
   # should ask first but then we have to deal with half a config.
   echo
