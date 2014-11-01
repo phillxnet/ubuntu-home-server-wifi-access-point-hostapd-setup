@@ -37,6 +37,8 @@ if ! dpkg -s hostadp >/dev/null; then
   read -e -p "Wifi SSID; ie the name of the wifi network to create: " -i "YTAgitWifi" SSID
   read -e -p "Wifi passphrase; what users will have to use as the password to associate join this Wifi network: " -i "changethissecret" WIFI_PASS
   read -e -p "Wifi CHANNEL ie 1-11 (in UK / GB region g based)" -i "1" CHANNEL
+  read -e -p "Do you wish to enable 802.11n capability (y/n): " -i "y" SETUP_80211N
+
 
   # Need to find the interface name as previously assumed eth0 but NUC has em1 for first motherboard interface
   # new naming convention; also has p3p1 (for pci slot and port number)
@@ -121,21 +123,25 @@ if ! dpkg -s hostadp >/dev/null; then
   echo "Setting rsn_pairwise=CCMP in /etc/hostapd/hostapd.conf"
   sudo sed -i 's/#rsn_pairwise=CCMP/rsn_pairwise=CCMP/g' /etc/hostapd/hostapd.conf
 
-  # need to put a conditional around this later to not enable n operation
-  # if user want n then
-  echo "Settingieee80211n=1 to enable 802.11n mode"
-  sudo sed -i 's/#ieee80211n=1/ieee80211n=1/g' /etc/hostapd/hostapd.conf
+  if [ "$SETUP_80211N" = "y" ]; then
+    # have to have enable ieee80211n=1 and wmm_enabled=1 (already set in default file)
+    # N.B. if TKIP is an option withing WPA2 (needed for n I think) auth method in rsn_pairwise
+    # then max speed can only be 54 Mbps; we have rsn_pairwise=CCMP which is AES (better)
+    echo "Setting ieee80211n=1 to enable 802.11n mode"
+    sudo sed -i 's/#ieee80211n=1/ieee80211n=1/g' /etc/hostapd/hostapd.conf
   
-  # also need to set 802.11n ht_capabilities.
-  # could set this depending on channel already selected:-
-  # ie for hw_mode=g (ie Band 1 or 2.4GHz):-
-  # if channel <=7 then HT40+
-  # else HT40-
-  # N.B. Band 1 capabilities on my 7260ac gave "Static SM Power Save" so added [SMPS-STATIC]
-  # will need to escape the square brackes as one of "$.*/[\]^"
-  echo "Setting ht_capab=[HT40+][SHORT-GI-40][DSSS_CCK-40][SMPS-STATIC]"
-  sudo sed -i 's/#ht_capab=\[HT40-\]\[SHORT-GI-20\]\[SHORT-GI-40\]/ht_capab=\[HT40+\]\[SHORT-GI-40\]\[DSSS_CCK-40\]\[SMPS-STATIC\]/g' /etc/hostapd/hostapd.conf
-  
+    # also need to set 802.11n ht_capabilities.
+    # could set this depending on channel already selected:-
+    # ie for hw_mode=g (ie Band 1 or 2.4GHz):-
+    # if channel <=7 then HT40+ ie second channel above primary.
+    # else HT40- ie second channel below primary channel
+    # One can find the capabilities of the hardware / driver via iw list
+    # N.B. Band 1 capabilities on my 7260ac gave "Static SM Power Save" so added [SMPS-STATIC]
+    # will need to escape the square brackes as one of "$.*/[\]^"
+    echo "Setting ht_capab=[HT40+][SHORT-GI-40][DSSS_CCK-40][SMPS-STATIC]"
+    sudo sed -i 's/#ht_capab=\[HT40-\]\[SHORT-GI-20\]\[SHORT-GI-40\]/ht_capab=\[HT40+\]\[SHORT-GI-40\]\[DSSS_CCK-40\]\[SMPS-STATIC\]/g' /etc/hostapd/hostapd.conf
+  fi
+      
   # install bridge-utils
   # should ask first but then we have to deal with half a config.
   echo
