@@ -174,7 +174,7 @@ __EOF
   
   echo 
   echo "hostapd Host Access Point Deamon should now be installed an configured."
-  echo "As this required network alterations a proper test it to reboot and"
+  echo "As this required network alterations a proper test is to reboot and"
   echo "confirm proper power on functionality."
   echo "If there are network issues review /etc/network/interfaces"
   echo
