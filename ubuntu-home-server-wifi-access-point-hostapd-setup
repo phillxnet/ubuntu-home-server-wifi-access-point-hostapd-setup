@@ -159,7 +159,7 @@ if ! dpkg -s hostadp >/dev/null; then
   # N.B. need a fix for the indenting here as we are exact piping the following lines and 
   # leading spaces may upset things.
   # Maybe put in function instead.
-  echo "enter br0 config in /etc/network/interfaces"
+  echo "entering br0 config in /etc/network/interfaces"
 sudo tee -a /etc/network/interfaces >/dev/null <<__EOF
 
 # Add br0 to auto started interfaces
@@ -171,6 +171,12 @@ iface br0 inet dhcp
 bridge_ports $LAN_INTERFACE_NAME
 
 __EOF
+  
+  echo 
+  echo "hostapd Host Access Point Deamon should now be installed an configured."
+  echo "As this required network alterations a proper test it to reboot and"
+  echo "confirm proper power on functionality."
+  echo "If there are network issues review /etc/network/interfaces"
 
 else
   echo "hostapd package already installed, please consider removing this package first"
