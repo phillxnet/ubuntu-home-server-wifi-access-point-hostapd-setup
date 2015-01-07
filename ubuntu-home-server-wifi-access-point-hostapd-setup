@@ -183,7 +183,7 @@ __EOF
   echo "'brctl show' should have the ethernet & wifi as members"
   echo "'watch -d iw wlan0 station dump' to see the specifications of connections"
   echo "Ctrl+C to exit the watch 'readout'"
-  echo "N.B. The very usefull iw command is can be installed via 'sudo apt-get install iw'"
+  echo "N.B. The very usefull iw command can be installed via 'sudo apt-get install iw'"
   echo
   
   read -e -p "Do you wish to restart the network and start hostapd (y/n): " -i "y" IFDOWNUP_HOSTAPD_START
